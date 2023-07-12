@@ -21,6 +21,7 @@ class Game:
         self.players[player_id] = {
             'stage': 'A',
             'money': 0,
+            'answered_count' : 0,
             'lifeline': True,
             'connection': connection
         }
@@ -88,7 +89,7 @@ class Game:
             }
         ]
         self.questions['C+'] = random.sample(level_c_plus_questions, 2)
-    #this function 
+    #this function handles the answer and updates a new question!
     def process_answer(self, player_id, answer):
         player = self.players[player_id]
         current_stage = player['stage']
@@ -96,11 +97,17 @@ class Game:
         correct_answer = self.get_current_question(player_id)['correct']
         answer = answer.upper()
         if answer == correct_answer:
-            # Correct answer
+            # Correct answer TODO fix here counter phases logic change - counter = amount of answered questions
             if current_stage == 'A':
                 # Level A
-                player['money'] = 5000
-                # player['stage'] = 'B'
+                if player['money'] == 0:
+                    player['money'] = 5000
+                else:
+                    player['money'] *= 2
+                player['answered_count'] += 1
+                if player['answered_count'] > 2:
+                    player['stage'] = 'B'
+                    player['answered_count'] = 0
             elif current_stage == 'B':
                 # Level B
                 player['money'] = current_money * 2
@@ -125,7 +132,7 @@ class Game:
         
         # Update board for player
         self.send_board_info(player_id)
-    
+    #TODO - fix move_player_forward only after 3 phases ended
     def move_player_forward(self, player_id):
         player = self.players[player_id]
         current_stage = player['stage']
@@ -182,11 +189,13 @@ class Game:
         elif current_stage == 'C':
             return 'C+'
         # Handle other stages
-    
+    #TODO - fix here!
     def get_current_question(self, player_id):
         player = self.players[player_id]
         current_stage = player['stage']
+        print("current_stage is ", current_stage)
         current_question_index = self.get_stage_position(current_stage) - 1
+        print("current_question_index is ",current_question_index)
         if len(self.questions[current_stage]) > current_question_index:
             return self.questions[current_stage][current_question_index]
         else:
@@ -236,15 +245,16 @@ def service_connection(key, mask, game):
             player_id = data.addr[1]
             
             if player_id in game.players:
-                if game.players[player_id]['stage'] == 'C+':
+                if message == "yes":
+                    print(message)
+                    handle_initial_response(sock, game, player_id, message)
+                elif game.players[player_id]['stage'] == 'C+':
                     handle_game_over_response(sock, game, player_id, message)
                 elif game.players[player_id]['stage'] == 'C':
                     handle_question_response(sock, game, player_id, message)
-                elif message == 'A' or message == 'B' or message == 'C':
-                    handle_question_response(sock, game, player_id, message)
+                    #TODO - put all phases
                 else:
-                    print(message)
-                    handle_initial_response(sock, game, player_id, message)
+                    handle_question_response(sock, game, player_id, message)
             
         else:
             print(f"Closing connection to {data.addr}")
@@ -271,6 +281,7 @@ def handle_initial_response(sock, game, player_id, response):
         game.remove_player(player_id)
 
 def handle_question_response(sock, game, player_id, response):
+
     current_stage = game.players[player_id]['stage']
     current_question = game.get_current_question(player_id)
     
@@ -278,7 +289,6 @@ def handle_question_response(sock, game, player_id, response):
         sock.sendall("Correct answer!\n".encode())
         game.process_answer(player_id, response.lower())
         next_question = game.get_current_question(player_id)
-        print(next_question) #TODO - next_question turns to None
         if next_question:
             send_question(sock, next_question)
         else:
