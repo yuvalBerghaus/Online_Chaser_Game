@@ -143,6 +143,8 @@ class Game:
     #TODO - fix move_player_forward only after 3 phases ended
     def move_player_forward(self, player_id):
         player = self.players[player_id]
+        player['answered_count'] = 0
+        player['correct_answers'] = 0
         current_stage = player['stage']
         current_position = self.get_stage_position(current_stage) # TODO - finished stage A!!!!
         next_stage = self.get_next_stage(current_stage)
@@ -175,20 +177,19 @@ class Game:
         conn = player['connection']
         conn.sendall(board_info.encode())
     
-    def get_stage_position(self, stage, answered_count):
-        pass
-        # if stage == 'A':
-        #     return 1
-        # elif stage == 'B':
-        #     return 4
+    def get_stage_position(self, stage):
+        if stage == 'A':
+            return 1
+        elif stage == 'B':
+            return 2
         # elif stage == 'C':
         #     return 5
         # elif stage == 'C+':
         #     return 6
-        # elif stage == 'chaser':
-        #     return 3
-        # elif stage == 'bank':
-        #     return 7
+        elif stage == 'chaser':
+            return 3
+        elif stage == 'bank':
+            return 7
 
     
     def get_next_stage(self, current_stage):
@@ -295,6 +296,8 @@ def handle_question_response(sock, game, player_id, response):
     current_question = game.get_current_question(player_id)
     if response.lower() == current_question['correct'].lower():
         sock.sendall("Correct answer!\n".encode())
+    else:
+        sock.sendall("incorrect answer!\n".encode())
     game.process_answer(player_id, response.lower())
     next_question = game.get_current_question(player_id)
     if next_question:
