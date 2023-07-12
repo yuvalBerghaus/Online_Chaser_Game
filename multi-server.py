@@ -104,7 +104,6 @@ class Game:
                     player['money'] = 5000
                 else:
                     player['money'] *= 2
-                player['answered_count'] += 1
                 if player['answered_count'] > 2:
                     player['stage'] = 'B'
                     player['answered_count'] = 0
@@ -115,9 +114,8 @@ class Game:
                 # Level C
                 player['stage'] = 'C+'
             # Handle other stages
-        
-            # Move the player forward
-            self.move_player_forward(player_id)
+            if player['answered_count'] > 2:
+                self.move_player_forward(player_id)
         
         else:
             # Incorrect answer
@@ -129,7 +127,7 @@ class Game:
                 # Level B
                 player['money'] = current_money // 2
             # Handle other stages
-        
+        player['answered_count'] += 1
         # Update board for player
         self.send_board_info(player_id)
     #TODO - fix move_player_forward only after 3 phases ended
@@ -167,19 +165,21 @@ class Game:
         conn = player['connection']
         conn.sendall(board_info.encode())
     
-    def get_stage_position(self, stage):
-        if stage == 'A':
-            return 1
-        elif stage == 'B':
-            return 4
-        elif stage == 'C':
-            return 5
-        elif stage == 'C+':
-            return 6
-        elif stage == 'chaser':
-            return 3
-        elif stage == 'bank':
-            return 7
+    def get_stage_position(self, stage, answered_count):
+        pass
+        # if stage == 'A':
+        #     return 1
+        # elif stage == 'B':
+        #     return 4
+        # elif stage == 'C':
+        #     return 5
+        # elif stage == 'C+':
+        #     return 6
+        # elif stage == 'chaser':
+        #     return 3
+        # elif stage == 'bank':
+        #     return 7
+
     
     def get_next_stage(self, current_stage):
         if current_stage == 'A':
@@ -189,12 +189,13 @@ class Game:
         elif current_stage == 'C':
             return 'C+'
         # Handle other stages
-    #TODO - fix here!
+    #TODO - fix here! need to change the question to the next one
     def get_current_question(self, player_id):
         player = self.players[player_id]
         current_stage = player['stage']
         print("current_stage is ", current_stage)
-        current_question_index = self.get_stage_position(current_stage) - 1
+        # current_question_index = self.get_stage_position(current_stage, player['answered_count']) - 1
+        current_question_index = player['answered_count']
         print("current_question_index is ",current_question_index)
         if len(self.questions[current_stage]) > current_question_index:
             return self.questions[current_stage][current_question_index]
