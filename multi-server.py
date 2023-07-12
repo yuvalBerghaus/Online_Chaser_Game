@@ -23,7 +23,8 @@ class Game:
             'money': 0,
             'answered_count' : 0,
             'lifeline': True,
-            'connection': connection
+            'connection': connection,
+            'correct_answers' : 0
         }
     
     def remove_player(self, player_id):
@@ -40,9 +41,14 @@ class Game:
                 'question': 'Which planet is known as the "Red Planet"?',
                 'options': ['Mars', 'Jupiter', 'Venus', 'Saturn'],
                 'correct': 'A'
+            },
+            {
+                'question' : 'Who is the author of the famous novel "To Kill a Mockingbird"?',
+                'options': ['J.D. Salinger', 'Harper Lee', 'F. Scott Fitzgerald', 'Ernest Hemingway'],
+                'correct': 'B'
             }
         ]
-        self.questions['A'] = random.sample(level_a_questions, 2)
+        self.questions['A'] = random.sample(level_a_questions, 3)
 
         
         # Level B questions
@@ -104,9 +110,6 @@ class Game:
                     player['money'] = 5000
                 else:
                     player['money'] *= 2
-                if player['answered_count'] > 2:
-                    player['stage'] = 'B'
-                    player['answered_count'] = 0
             elif current_stage == 'B':
                 # Level B
                 player['money'] = current_money * 2
@@ -114,8 +117,7 @@ class Game:
                 # Level C
                 player['stage'] = 'C+'
             # Handle other stages
-            if player['answered_count'] > 2:
-                self.move_player_forward(player_id)
+            player['correct_answers'] += 1
         
         else:
             # Incorrect answer
@@ -126,15 +128,23 @@ class Game:
             elif current_stage == 'B':
                 # Level B
                 player['money'] = current_money // 2
-            # Handle other stages
+        # Handle other stages TODO
         player['answered_count'] += 1
+        print('answered_count = ',player['answered_count'] )
+        if player['answered_count'] == 3:
+            if player['correct_answers'] > 0:
+                self.move_player_forward(player_id)
+            else:
+                player['stage'] = 'A'
+
+
         # Update board for player
         self.send_board_info(player_id)
     #TODO - fix move_player_forward only after 3 phases ended
     def move_player_forward(self, player_id):
         player = self.players[player_id]
         current_stage = player['stage']
-        current_position = self.get_stage_position(current_stage)
+        current_position = self.get_stage_position(current_stage) # TODO - finished stage A!!!!
         next_stage = self.get_next_stage(current_stage)
         next_position = self.get_stage_position(next_stage)
         
@@ -193,10 +203,8 @@ class Game:
     def get_current_question(self, player_id):
         player = self.players[player_id]
         current_stage = player['stage']
-        print("current_stage is ", current_stage)
         # current_question_index = self.get_stage_position(current_stage, player['answered_count']) - 1
         current_question_index = player['answered_count']
-        print("current_question_index is ",current_question_index)
         if len(self.questions[current_stage]) > current_question_index:
             return self.questions[current_stage][current_question_index]
         else:
@@ -285,22 +293,28 @@ def handle_question_response(sock, game, player_id, response):
 
     current_stage = game.players[player_id]['stage']
     current_question = game.get_current_question(player_id)
-    
     if response.lower() == current_question['correct'].lower():
         sock.sendall("Correct answer!\n".encode())
-        game.process_answer(player_id, response.lower())
-        next_question = game.get_current_question(player_id)
-        if next_question:
-            send_question(sock, next_question)
-        else:
-            # Player has reached the bank, game is over
-            send_game_summary(sock)
-            sel.unregister(sock)
-            sock.close()
-            game.remove_player(player_id)
+    game.process_answer(player_id, response.lower())
+    next_question = game.get_current_question(player_id)
+    if next_question:
+        send_question(sock, next_question)
     else:
-        sock.sendall("Incorrect answer!\n".encode())
-        send_question(sock, current_question)
+        print("GAME OVER")
+    #     sock.sendall("Correct answer!\n".encode())
+    #     game.process_answer(player_id, response.lower())
+    #     next_question = game.get_current_question(player_id)
+    #     if next_question:
+    #         send_question(sock, next_question)
+    #     else:
+    #         # Player has reached the bank, game is over
+    #         send_game_summary(sock)
+    #         sel.unregister(sock)
+    #         sock.close()
+    #         game.remove_player(player_id)
+    # else:
+    #     sock.sendall("Incorrect answer!\n".encode())
+    #     send_question(sock, current_question)
 
 def send_game_summary(sock):
     summary = "Game over!\n"
