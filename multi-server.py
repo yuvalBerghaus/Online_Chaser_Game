@@ -17,11 +17,12 @@ class Game:
             'C+': []
         }
         
-    def add_player(self, player_id):
+    def add_player(self, player_id, connection):
         self.players[player_id] = {
             'stage': 'A',
             'money': 0,
-            'lifeline': True
+            'lifeline': True,
+            'connection': connection
         }
     
     def remove_player(self, player_id):
@@ -87,19 +88,19 @@ class Game:
             }
         ]
         self.questions['C+'] = random.sample(level_c_plus_questions, 2)
-    
+    #this function 
     def process_answer(self, player_id, answer):
         player = self.players[player_id]
         current_stage = player['stage']
         current_money = player['money']
         correct_answer = self.get_current_question(player_id)['correct']
-        
+        answer = answer.upper()
         if answer == correct_answer:
             # Correct answer
             if current_stage == 'A':
                 # Level A
                 player['money'] = 5000
-                player['stage'] = 'B'
+                # player['stage'] = 'B'
             elif current_stage == 'B':
                 # Level B
                 player['money'] = current_money * 2
@@ -199,10 +200,10 @@ def accept_wrapper(sock, game):
     events = selectors.EVENT_READ | selectors.EVENT_WRITE
     sel.register(conn, events, data=data)
     player_id = addr[1]  # Assuming unique port numbers as player IDs
-    game.add_player(player_id)
+    game.add_player(player_id, conn)
     send_instructions(conn)
-    game.generate_questions()
-    send_question(conn, game.get_current_question(player_id))
+    # game.generate_questions()
+    # send_question(conn, game.get_current_question(player_id))
     
 def send_instructions(conn):
     instructions = "Welcome to The Chase game!\n"
@@ -277,6 +278,7 @@ def handle_question_response(sock, game, player_id, response):
         sock.sendall("Correct answer!\n".encode())
         game.process_answer(player_id, response.lower())
         next_question = game.get_current_question(player_id)
+        print(next_question) #TODO - next_question turns to None
         if next_question:
             send_question(sock, next_question)
         else:

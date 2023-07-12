@@ -9,12 +9,12 @@ def main():
         print(sock.recv(1024).decode())  # Receive welcome message
 
         while True:
+            
             answer = input("Enter your answer:")
             sock.sendall(answer.encode())
 
             response = sock.recv(1024).decode()
             print(response)
-
             if response.startswith("Game over"):
                 break
 
