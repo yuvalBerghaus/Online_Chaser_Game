@@ -62,9 +62,14 @@ class Game:
                 'question': 'Which country is famous for the Taj Mahal?',
                 'options': ['India', 'China', 'Egypt', 'Italy'],
                 'correct': 'A'
+            },
+                        {
+                'question': 'Who wrote the novel "1984"?',
+                'options': ['George Orwell', 'J.R.R. Tolkien', 'Jane Austen', 'F. Scott Fitzgerald'],
+                'correct': 'A'
             }
         ]
-        self.questions['B'] = random.sample(level_b_questions, 2)
+        self.questions['B'] = random.sample(level_b_questions, 3)
         
         # Level C questions
         level_c_questions = [
@@ -77,9 +82,14 @@ class Game:
                 'question': 'Which animal is the largest living mammal?',
                 'options': ['Blue whale', 'African elephant', 'Giraffe', 'Hippopotamus'],
                 'correct': 'A'
+            },
+                        {
+                'question': 'What is the largest organ in the human body?',
+                'options': ['Liver', 'Heart', 'Skin', 'Brain'],
+                'correct': 'C'
             }
         ]
-        self.questions['C'] = random.sample(level_c_questions, 2)
+        self.questions['C'] = random.sample(level_c_questions, 3)
         
         # Level C+ questions
         level_c_plus_questions = [
@@ -133,6 +143,7 @@ class Game:
         print('answered_count = ',player['answered_count'] )
         if player['answered_count'] == 3:
             if player['correct_answers'] > 0:
+                #TODO - check if he was on stage A and if he was then send him the options of how much he wants to continue with - 2*current_amount or current_amount/2 or current
                 self.move_player_forward(player_id)
             else:
                 player['stage'] = 'A'
@@ -171,7 +182,7 @@ class Game:
         lifeline = player['lifeline']
         
         # Prepare board info message
-        board_info = f"Money: {current_money} | Stage: {current_stage} | Chaser: {self.chaser_stage} | Lifeline: {lifeline}"
+        board_info = f"Money: {current_money} | Stage: {current_stage} | Chaser: {self.chaser_stage} | Lifeline: {lifeline}\n"
         
         # Send board info to the player
         conn = player['connection']
@@ -224,11 +235,24 @@ def accept_wrapper(sock, game):
     # game.generate_questions()
     # send_question(conn, game.get_current_question(player_id))
     
+
+def send_phaseB_message(conn, current_amount):
+    divided = current_amount / 2
+    double = current_amount * 2
+    instructions = "Congratz!\n"
+    instructions += f"You now have {current_amount}!\n"
+    instructions += "Choose where do you want to continue from: \n"
+    instructions += f"Step 2 - {double}\n"
+    instructions += f"Step 3 - {current_amount}\n"
+    instructions += f"Step 4 - {divided}\n"
+    conn.sendall(instructions.encode())
+
+
 def send_instructions(conn):
     instructions = "Welcome to The Chase game!\n"
     instructions += "Answer the questions correctly to win money!\n"
     instructions += "Enter your answer as a single letter (A, B, C, or D).\n"
-    instructions += "Get ready to play!"
+    instructions += "Get ready to play!\n"
     conn.sendall(instructions.encode())
 
 def send_question(conn, question):
@@ -299,11 +323,15 @@ def handle_question_response(sock, game, player_id, response):
     else:
         sock.sendall("incorrect answer!\n".encode())
     game.process_answer(player_id, response.lower())
-    next_question = game.get_current_question(player_id)
-    if next_question:
-        send_question(sock, next_question)
+    # WHEN THE PLAYER GETS TO PHASE B IM ASKING HIM IF HE WANTS TO DOUBLE OR CURRENT OR DIVIDED 
+    if game.players[player_id]['stage'] == 'B':
+        send_phaseB_message(sock,game.players[player_id]['money'])
     else:
-        print("GAME OVER")
+        next_question = game.get_current_question(player_id)
+        if next_question:
+            send_question(sock, next_question)
+        else:
+            print("GAME OVER")
     #     sock.sendall("Correct answer!\n".encode())
     #     game.process_answer(player_id, response.lower())
     #     next_question = game.get_current_question(player_id)
